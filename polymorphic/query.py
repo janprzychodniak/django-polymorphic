@@ -112,6 +112,8 @@ class PolymorphicQuerySet(QuerySet):
         # to that queryset as well).
         self.polymorphic_deferred_loading = (set(), True)
 
+        self._polymorphic_select_related = {}
+
     def _clone(self, *args, **kwargs):
         # Django's _clone only copies its own variables, so we need to copy ours here
         new = super()._clone(*args, **kwargs)
@@ -421,7 +423,12 @@ class PolymorphicQuerySet(QuerySet):
                 **{("%s__in" % pk_name): idlist}
             )
             # copy select related configuration to new qs
-            real_objects.query.select_related = self.query.select_related
+            if real_concrete_class in self._polymorphic_select_related:
+                real_objects = real_objects.select_related(
+                    *self._polymorphic_select_related[real_concrete_class]
+                )
+            else:
+                real_objects.query.select_related = self.query.select_related
 
             # Copy deferred fields configuration to the new queryset
             deferred_loading_fields = []
@@ -535,3 +542,7 @@ class PolymorphicQuerySet(QuerySet):
             return olist
         clist = PolymorphicQuerySet._p_list_class(olist)
         return clist
+
+    def select_polymorphic_related(self, polymorphic_subclass, *fields):
+        self._polymorphic_select_related[polymorphic_subclass] = fields
+        return self
