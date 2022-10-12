@@ -122,6 +122,7 @@ class PolymorphicQuerySet(QuerySet):
             copy.copy(self.polymorphic_deferred_loading[0]),
             self.polymorphic_deferred_loading[1],
         )
+        new._polymorphic_select_related = copy.copy(self._polymorphic_select_related)
         return new
 
     def as_manager(cls):
