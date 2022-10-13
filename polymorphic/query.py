@@ -113,6 +113,7 @@ class PolymorphicQuerySet(QuerySet):
         self.polymorphic_deferred_loading = (set(), True)
 
         self._polymorphic_select_related = {}
+        self._polymorphic_prefetch_related = {}
 
     def _clone(self, *args, **kwargs):
         # Django's _clone only copies its own variables, so we need to copy ours here
@@ -123,6 +124,7 @@ class PolymorphicQuerySet(QuerySet):
             self.polymorphic_deferred_loading[1],
         )
         new._polymorphic_select_related = copy.copy(self._polymorphic_select_related)
+        new._polymorphic_prefetch_related = copy.copy(self._polymorphic_prefetch_related)
         return new
 
     def as_manager(cls):
@@ -423,13 +425,20 @@ class PolymorphicQuerySet(QuerySet):
             real_objects = real_concrete_class._base_objects.db_manager(self.db).filter(
                 **{("%s__in" % pk_name): idlist}
             )
-            # copy select related configuration to new qs
+
+            # set select_related() on the real objects, if explicitly specified otherwise copy it from the base objects
             if real_concrete_class in self._polymorphic_select_related:
                 real_objects = real_objects.select_related(
                     *self._polymorphic_select_related[real_concrete_class]
                 )
             else:
                 real_objects.query.select_related = self.query.select_related
+
+            # polymorphic prefetch related configuration to new qs
+            if real_concrete_class in self._polymorphic_prefetch_related:
+                real_objects = real_objects.prefetch_related(
+                    *self._polymorphic_prefetch_related[real_concrete_class]
+                )
 
             # Copy deferred fields configuration to the new queryset
             deferred_loading_fields = []
@@ -546,4 +555,8 @@ class PolymorphicQuerySet(QuerySet):
 
     def select_polymorphic_related(self, polymorphic_subclass, *fields):
         self._polymorphic_select_related[polymorphic_subclass] = fields
+        return self
+
+    def prefetch_polymorphic_related(self, polymorphic_subclass, *lookups):
+        self._polymorphic_prefetch_related[polymorphic_subclass] = lookups
         return self
