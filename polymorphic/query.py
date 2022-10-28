@@ -114,6 +114,7 @@ class PolymorphicQuerySet(QuerySet):
 
         self._polymorphic_select_related = {}
         self._polymorphic_prefetch_related = {}
+        self._polymorphic_custom_queryset = {}
 
     def _clone(self, *args, **kwargs):
         # Django's _clone only copies its own variables, so we need to copy ours here
@@ -125,6 +126,7 @@ class PolymorphicQuerySet(QuerySet):
         )
         new._polymorphic_select_related = copy.copy(self._polymorphic_select_related)
         new._polymorphic_prefetch_related = copy.copy(self._polymorphic_prefetch_related)
+        new._polymorphic_custom_queryset = copy.copy(self._polymorphic_custom_queryset)
         return new
 
     def as_manager(cls):
@@ -422,7 +424,12 @@ class PolymorphicQuerySet(QuerySet):
         # TODO: defer(), only(): support for these would be around here
         for real_concrete_class, idlist in idlist_per_model.items():
             indices = indexlist_per_model[real_concrete_class]
-            real_objects = real_concrete_class._base_objects.db_manager(self.db).filter(
+            if self._polymorphic_custom_queryset[real_concrete_class]:
+                real_objects = self._polymorphic_custom_queryset[real_concrete_class]
+            else:
+                real_objects = real_concrete_class._base_objects.db_manager(self.db)
+
+            real_objects = real_objects.filter(
                 **{("%s__in" % pk_name): idlist}
             )
 
@@ -560,3 +567,6 @@ class PolymorphicQuerySet(QuerySet):
     def prefetch_polymorphic_related(self, polymorphic_subclass, *lookups):
         self._polymorphic_prefetch_related[polymorphic_subclass] = lookups
         return self
+
+    def custom_queryset(self, polymorphic_subclass, queryset):
+        self._polymorphic_custom_queryset[polymorphic_subclass] = queryset
