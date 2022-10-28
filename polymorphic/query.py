@@ -561,12 +561,16 @@ class PolymorphicQuerySet(QuerySet):
         return clist
 
     def select_polymorphic_related(self, polymorphic_subclass, *fields):
-        self._polymorphic_select_related[polymorphic_subclass] = fields
-        return self
+        clone = self._clone()
+        clone._polymorphic_select_related[polymorphic_subclass] = fields
+        return clone
 
     def prefetch_polymorphic_related(self, polymorphic_subclass, *lookups):
-        self._polymorphic_prefetch_related[polymorphic_subclass] = lookups
-        return self
+        clone = self._clone()
+        clone._polymorphic_prefetch_related[polymorphic_subclass] = lookups
+        return clone
 
     def custom_queryset(self, polymorphic_subclass, queryset):
-        self._polymorphic_custom_queryset[polymorphic_subclass] = queryset
+        clone = self._clone()
+        clone._polymorphic_custom_queryset[polymorphic_subclass] = queryset
+        return clone
