@@ -424,7 +424,7 @@ class PolymorphicQuerySet(QuerySet):
         # TODO: defer(), only(): support for these would be around here
         for real_concrete_class, idlist in idlist_per_model.items():
             indices = indexlist_per_model[real_concrete_class]
-            if self._polymorphic_custom_queryset[real_concrete_class]:
+            if self._polymorphic_custom_queryset.get(real_concrete_class):
                 real_objects = self._polymorphic_custom_queryset[real_concrete_class]
             else:
                 real_objects = real_concrete_class._base_objects.db_manager(self.db)
