@@ -433,15 +433,16 @@ class PolymorphicQuerySet(QuerySet):
                 **{("%s__in" % pk_name): idlist}
             )
 
-            # set select_related() on the real objects, if explicitly specified otherwise copy it from the base objects
+            # copy select_related() fields from base objects to real objects
+            real_objects.query.select_related = self.query.select_related
+
+            # polymorphic select_related() fields if any
             if real_concrete_class in self._polymorphic_select_related:
                 real_objects = real_objects.select_related(
                     *self._polymorphic_select_related[real_concrete_class]
                 )
-            else:
-                real_objects.query.select_related = self.query.select_related
 
-            # polymorphic prefetch related configuration to new qs
+                # polymorphic prefetch related configuration to new qs
             if real_concrete_class in self._polymorphic_prefetch_related:
                 real_objects = real_objects.prefetch_related(
                     *self._polymorphic_prefetch_related[real_concrete_class]
@@ -561,6 +562,10 @@ class PolymorphicQuerySet(QuerySet):
         return clist
 
     def select_polymorphic_related(self, polymorphic_subclass, *fields):
+        if self.query.select_related is True:
+            raise ValueError(
+                "select_polymorphic_related() cannot be used together with select_related=True"
+            )
         clone = self._clone()
         clone._polymorphic_select_related[polymorphic_subclass] = fields
         return clone
